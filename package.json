@@ -1,12 +1,19 @@
 {
-  "name": "lmt-mock-server",
-  "description": "Local mock server for LMT anonymous-report. Uses bun:sqlite, zero npm deps.",
+  "name": "lmt-report-server",
+  "description": "Cloudflare Worker + D1 backend for LMT anonymous-report telemetry (Supabase replacement).",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "bun run server.ts",
-    "dev": "bun --watch run server.ts"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "d1:local": "wrangler d1 execute lmt-reports --local --file=./schema.sql",
+    "d1:remote": "wrangler d1 execute lmt-reports --remote --file=./schema.sql",
+    "cf-typegen": "wrangler types"
   },
-  "dependencies": {}
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250224.0",
+    "typescript": "^5.7.3",
+    "wrangler": "^3.111.0"
+  }
 }

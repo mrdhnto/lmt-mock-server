@@ -1,69 +1,73 @@
-# LMT Mock Server
+# LMT Telemetry Server (Cloudflare Worker + D1)
 
-Local replacement for the Supabase anonymous-reporting backend. Accepts the
-same POST payload the extension sends and stores it in a SQLite in-memory DB.
+Production backend for LMT anonymous-report telemetry. Drop-in replacement for Supabase.
 
-## Requirements
+## Architecture & Protections
 
-- [Bun](https://bun.sh) 1.1+
+- **Edge DDoS & Rate Limiting:** Cloudflare native rate limiter restricts excessive requests per IP (15 req/min).
+- **Size & Payload Guard:** Hard cap at 100KB payload, strict schema validation for bboxes coordinates, string lengths, and URL bounds.
+- **Serverless D1 Storage:** All report metadata and image URLs indexed directly in Cloudflare D1 SQLite.
+- **Admin Authentication:** `GET /reports` and `GET /reports/:id` are protected by `ADMIN_API_KEY`. Public clients can only `POST`.
+- **Client Key:** `POST` ingestion requires `CLIENT_INGEST_KEY` (`Authorization: Bearer ...`).
 
-## Usage
+---
 
+## Setup & Cloudflare Provisioning
+
+### 1. Install Dependencies
 ```bash
 cd mock-server
-bun run server.ts
+bun install
 ```
 
-By default it listens on **port 3001**. Override with `PORT`:
+### 2. Provision Cloudflare Resources
 
 ```bash
-PORT=8080 bun run server.ts
+# Login to Cloudflare
+npx wrangler login
+
+# Create D1 Database (copy returned database_id to wrangler.jsonc)
+npx wrangler d1 create lmt-reports
 ```
 
-## Extension Config
-
-Set these in `lmt-1.0.0-alpha/.env` so the extension sends data here:
-
-```
-WXT_SUPABASE_URL=http://localhost:3001/rest/v1/bbox_data
-WXT_SUPABASE_PUBLIC_KEY=any-string-you-like
-```
-
-## Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `*` | Accepts the anonymous-report payload. Stored in SQLite. |
-| `GET` | `/reports` | List all stored reports (newest first). |
-| `GET` | `/reports/:id` | Single report by UUID. |
-
-## Payload Format (POST)
-
-```json
-{
-  "seriesName": "One Piece",
-  "chapterId": "1100",
-  "pageIndex": 5,
-  "bboxes": [{ "x1": 10, "y1": 20, "x2": 100, "y2": 80, "confidence": 0.95 }],
-  "imageBase64": "data:image/jpeg;base64,..."
-}
-```
-
-## Example
-
+### 3. Set Secrets
 ```bash
-# Start server
-bun run server.ts
-
-# List reports (empty)
-curl http://localhost:3001/reports
-
-# Send a report (POST to any path)
-curl -X POST http://localhost:3001/rest/v1/bbox_data \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer mock-key" \
-  -d '{"seriesName":"Test","chapterId":"1","pageIndex":0,"bboxes":[],"imageBase64":""}'
-
-# List reports (now has 1 entry)
-curl http://localhost:3001/reports
+# Set your private Admin Key (for viewing/exporting reports)
+npx wrangler secret put ADMIN_API_KEY
 ```
+
+### 4. Initialize Database Schema
+```bash
+# Run on local preview DB:
+bun run d1:local
+
+# Run on Cloudflare production D1:
+bun run d1:remote
+```
+
+### 5. Deploy
+```bash
+bun run deploy
+```
+
+---
+
+## Extension Configuration
+
+In `lmt-1.0.0-alpha/.env`:
+
+```env
+WXT_TELEMETRY_URL=https://lmt-report-server.<your-subdomain>.workers.dev/rest/v1/bbox_data
+WXT_TELEMETRY_PUBLIC_KEY=lmt-public-telemetry-key
+```
+
+---
+
+## API Endpoints
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `*` | Bearer Client Key | Ingest anonymous report (`seriesName`, `chapterId`, `pageIndex`, `bboxes`, `imageUrl`). |
+| `GET` | `/reports` | `X-Admin-Key` | List 100 recent reports. |
+| `GET` | `/reports/:id` | `X-Admin-Key` | Get complete report by UUID. |
+| `OPTIONS`| `*` | None | CORS preflight. |

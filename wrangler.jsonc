@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lmt-report-server",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lmt-reports",
+      "database_id": "56dcb651-2c71-4e68-8a73-776dbfc673a4",
+      "migrations_table": "d1_migrations"
+    }
+  ],
+  "unsafe": {
+    "bindings": [
+      {
+        "name": "RATE_LIMITER",
+        "type": "ratelimit",
+        "namespace_id": "1001",
+        "simple": {
+          "limit": 15,
+          "period": 60
+        }
+      }
+    ]
+  },
+  "vars": {
+    "CLIENT_INGEST_KEY": "lmt-public-telemetry-key"
+  }
+}
