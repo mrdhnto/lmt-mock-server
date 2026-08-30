@@ -1,0 +1,12 @@
+{
+  "name": "lmt-mock-server",
+  "description": "Local mock server for LMT anonymous-report. Uses bun:sqlite, zero npm deps.",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "bun run server.ts",
+    "dev": "bun --watch run server.ts"
+  },
+  "dependencies": {}
+}
