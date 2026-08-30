@@ -18,7 +18,7 @@ This policy covers the following operating modes and data practices:
 - **WebGPU Mode:** fully on-device processing with no external data transmission (default).
 - **Gemini Mode:** optional, user-initiated mode using the user's own Gemini API key.
 - **API Mode:** optional, user-initiated mode connecting to a self-hosted or third-party LLM server.
-- **Anonymous Telemetry:** an opt-in data sharing program that includes bounding box coordinates, page images, and series metadata.
+- **Anonymous Telemetry:** an opt-in data sharing program that includes bounding box coordinates, image or page URLs, and series metadata.
 
 > **Default state:** LMT collects no personal data and transmits no content data by default. You must affirmatively opt into Gemini Mode, API Mode, and/or telemetry for any outbound data to occur.
 
@@ -36,7 +36,7 @@ All of the following processing occurs exclusively within your browser's sandbox
 
 - **Bubble detection:** A YOLO-Nano or YOLO-Small ONNX model runs inside a dedicated offscreen document via ONNX Runtime Web. No image data leaves this sandboxed context.
 - **Text extraction:** PaddleOCR ONNX model processes the content of each detected bounding box on-device.
-- **Inpainting:** OpenCV.js Telea algorithm removes text from speech bubbles on-device before rendering translations.
+- **Inpainting:** Pure-JS Telea fast-marching algorithm (with local fallback) removes text from speech bubbles on-device before rendering translations.
 - **Translation:** WebLLM loads a local language model (Qwen3-4B or Qwen3-8B) into memory and performs inference using your device's GPU via WebGPU. No text is transmitted to any external endpoint.
 - **Result rendering:** Translated text is painted onto the inpainted page using a canvas overlay that exists only in your browser tab.
 
@@ -110,25 +110,25 @@ LMT provides an option for users to voluntarily share data to help improve the a
 
 ### What telemetry data contains
 
-If you opt in, the Extension submits the following data to our Supabase-hosted database when you manually adjust, add, or delete bounding boxes:
+If you opt in, the Extension submits the following data to our telemetry database when you manually adjust, add, or delete bounding boxes:
 
 - **Bounding box coordinates:** The pixel coordinates (x, y, width, height) of each detected and user-adjusted speech bubble, stored as structured JSON.
-- **Page image:** The manga page image is uploaded to a storage location and its path is recorded. This image is necessary for model training, as bounding box coordinates alone are not sufficient to train a detection model.
+- **Image reference / URL:** The image source URL (or the full page URL if the image source is an embedded data/blob URL). The Extension does not upload or transmit raw page image files or base64 payloads to telemetry.
 - **Series metadata:** The series name, chapter identifier, and page index are recorded to organize submissions by source and to avoid counting duplicate pages multiple times.
 
 ### What telemetry data does not contain
 
-The telemetry submission is not capable of transmitting personal information. It contains no IP addresses (the database does not log client IPs), no browser fingerprints, no device identifiers, no account credentials, and no translated or extracted text.
+The telemetry submission is not capable of transmitting personal information. It contains no browser fingerprints, no device identifiers, no account credentials, and no translated or extracted text.
 
-The submission schema is limited to: a random UUID, a timestamp, series name, chapter ID, page index, image path, a Google Drive URL for the uploaded image, and the bounding box array. Nothing in that schema can be traced back to a specific person.
+The submission schema is limited to: a random UUID, a timestamp, series name, chapter ID, page index, image/page URL, and the bounding box array. Nothing in that schema can be traced back to a specific person.
 
 ### How telemetry data is used
 
-Telemetry data is used solely to build training datasets for future versions of the LMT YOLO bubble detection model. The bounding box coordinates and associated page images allow us to understand how users correct automated detections, which improves model recall and precision over time. The data is not sold, shared with third parties for commercial purposes, or used for any purpose other than model improvement.
+Telemetry data is used solely to build and verify training datasets for future versions of the LMT YOLO bubble detection model. The bounding box coordinates and associated page/image references allow us to understand how users correct automated detections, which improves model recall and precision over time. The data is not sold, shared with third parties for commercial purposes, or used for any purpose other than model improvement.
 
 ### Telemetry data storage
 
-Telemetry data is stored in a Supabase database. Supabase's own privacy policy and data processing terms apply to the storage of this data. Page images are stored in a Google Drive folder associated with the project. We retain telemetry submissions indefinitely for model training purposes.
+Telemetry data is stored in our database backend (such as Cloudflare D1 / serverless storage). We retain telemetry submissions indefinitely for model training and evaluation purposes.
 
 ---
 
@@ -142,7 +142,7 @@ The Extension stores certain data locally in your browser using the `chrome.stor
 - **Series context:** Any title, summary, and custom dictionary data you create in the Context tab. Stored locally and, in Gemini Mode or API Mode, transmitted to Google's Gemini API or your configured LLM server as part of the translation prompt.
 - **Translation history:** The last five translation results per series, stored locally to provide context for subsequent page translations. This data remains on your device.
 - **Translation cache:** Translated page images are cached locally per series/chapter/page to avoid re-translating the same page. This data remains on your device.
-- **Inpainted image cache:** Inpainted base images (text removed via OpenCV.js) are cached locally per image source during a translation session to enable fast text redrawing. This cache is cleared when you close the translation overlay.
+- **Inpainted image cache:** Inpainted base images (text removed via pure-JS Telea fast-marching) are cached locally per image source during a translation session to enable fast text redrawing. This cache is cleared when you close the translation overlay.
 - **Onboarding state:** A flag indicating whether you have completed the onboarding flow and your telemetry opt-in decision.
 
 You may clear all locally stored Extension data at any time by uninstalling the Extension or by clearing browser extension storage through your browser's developer tools.
@@ -165,9 +165,9 @@ If you enable Gemini Mode and provide a Gemini API key, annotated manga images a
 
 If you enable API Mode and configure a server endpoint, extracted text and series context data are transmitted directly from your browser to your configured server. For self-hosted servers (localhost), you control all data handling. For third-party servers, the provider's Privacy Policy and Terms of Service govern this transmission.
 
-### Supabase and Google Drive (Telemetry opt-in only)
+### Telemetry Backend (Telemetry opt-in only)
 
-If you opt into the anonymous telemetry program, bounding box coordinate data and associated page images are transmitted to a Supabase-hosted database and a Google Drive folder. Supabase's Data Processing Agreement and Privacy Policy govern the storage of database records. Google's Privacy Policy governs the storage of images in Google Drive.
+If you opt into the anonymous telemetry program, bounding box coordinate data and associated image/page URLs are transmitted to our telemetry ingest endpoint. Database records are stored on secure serverless infrastructure (such as Cloudflare D1). No raw page image files or base64 image data are transmitted.
 
 ---
 

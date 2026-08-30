@@ -23,7 +23,7 @@ db.run(`
     chapter   TEXT NOT NULL,
     page      INTEGER NOT NULL,
     bboxes    TEXT NOT NULL,          -- JSON-encoded array
-    image     TEXT NOT NULL           -- base64 data-URL
+    image_url TEXT NOT NULL           -- Image or page URL
   )
 `);
 
@@ -34,7 +34,8 @@ interface ReportBody {
   chapterId: string;
   pageIndex: number;
   bboxes: { x1: number; y1: number; x2: number; y2: number; confidence: number }[];
-  imageBase64: string;
+  imageUrl?: string;
+  imageBase64?: string;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -112,8 +113,9 @@ const server = Bun.serve({
       }
 
       const id = randomUUID();
+      const imageUrl = body.imageUrl ?? body.imageBase64 ?? "";
       db.query(`
-        INSERT INTO reports (id, series, chapter, page, bboxes, image)
+        INSERT INTO reports (id, series, chapter, page, bboxes, image_url)
         VALUES (?, ?, ?, ?, ?, ?)
       `).run(
         id,
@@ -121,7 +123,7 @@ const server = Bun.serve({
         body.chapterId,
         body.pageIndex,
         JSON.stringify(body.bboxes ?? []),
-        body.imageBase64 ?? "",
+        imageUrl,
       );
 
       const row = db.query("SELECT * FROM reports WHERE id = ?").get(id);
