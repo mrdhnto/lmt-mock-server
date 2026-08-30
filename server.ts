@@ -23,7 +23,8 @@ db.run(`
     chapter   TEXT NOT NULL,
     page      INTEGER NOT NULL,
     bboxes    TEXT NOT NULL,          -- JSON-encoded array
-    image_url TEXT NOT NULL           -- Image or page URL
+    image_url TEXT NOT NULL,          -- Image or page URL
+    client_ip TEXT                    -- Client IP address
   )
 `);
 
@@ -115,8 +116,8 @@ const server = Bun.serve({
       const id = randomUUID();
       const imageUrl = body.imageUrl ?? body.imageBase64 ?? "";
       db.query(`
-        INSERT INTO reports (id, series, chapter, page, bboxes, image_url)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO reports (id, series, chapter, page, bboxes, image_url, client_ip)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `).run(
         id,
         body.seriesName,
@@ -124,6 +125,7 @@ const server = Bun.serve({
         body.pageIndex,
         JSON.stringify(body.bboxes ?? []),
         imageUrl,
+        "127.0.0.1",
       );
 
       const row = db.query("SELECT * FROM reports WHERE id = ?").get(id);

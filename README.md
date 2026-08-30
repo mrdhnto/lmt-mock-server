@@ -57,8 +57,8 @@ bun run deploy
 In `lmt-1.0.0-alpha/.env`:
 
 ```env
-WXT_TELEMETRY_URL=https://lmt-report-server.<your-subdomain>.workers.dev/rest/v1/bbox_data
-WXT_TELEMETRY_PUBLIC_KEY=lmt-public-telemetry-key
+WXT_TELEMETRY_URL=http://localhost:8787/rest/v1/bbox_data
+WXT_TELEMETRY_PUBLIC_KEY=lmt-development-telemetry-key
 ```
 
 ---
